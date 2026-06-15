@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RECOMAP — Red de Inteligencia Comercial de Residuos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root {
+  --p900:#0f0926; --p800:#191340; --p700:#2c2273; --p600:#4336a6;
+  --p500:#6352e8; --p400:#9488f2; --p300:#c5bffa; --p200:#e9e6ff;
+  --p100:#f7f6ff; --ink:#0b081a; --muted:#534f73; --faint:#e2e0f2; --white:#ffffff;
+  --font-head:'Syne',sans-serif; --font-body:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body{font-family:var(--font-body);background:var(--p100);color:var(--ink);min-height:100vh;overflow:hidden;}
+
+/* PANTALLA DE INICIO / SPLASH SCREEN (10 SEGUNDOS) */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--p900);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+#splash-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.logo-futurista {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+.logo-circle {
+  position: absolute;
+  border: 2px solid transparent;
+  border-top-color: var(--p400);
+  border-bottom-color: var(--p600);
+  border-radius: 50%;
+  animation: rotateLogo 4s linear infinite;
+}
+.logo-circle.outer { width: 90px; height: 90px; }
+.logo-circle.inner { width: 66px; height: 66px; animation-direction: reverse; border-top-color: var(--p300); border-left-color: var(--p500); }
+.logo-core {
+  width: 24px;
+  height: 24px;
+  background: var(--white);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--p400);
+  animation: pulseCore 2s ease-in-out infinite;
+}
+@keyframes rotateLogo { to { transform: rotate(360deg); } }
+@keyframes pulseCore { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; } }
+
+.splash-title { font-family:var(--font-head); font-size:24px; font-weight:700; color:var(--white); letter-spacing:0.2em; margin-bottom:0.5rem; }
+.splash-subtitle { font-size:12px; color:var(--p400); letter-spacing:0.05em; margin-bottom:2.5rem; font-weight:300; text-transform: uppercase; }
+.progress-container { width: 240px; height: 3px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; position: relative; }
+.progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--p500), var(--p300)); animation: loadProgress 10s linear forwards; }
+@keyframes loadProgress { to { width: 100%; } }
+
+/* ESTRUCTURA DE SLIDES */
+.slider-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.slide {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; visibility: hidden;
+  transition: opacity 0.6s ease-in-out, visibility 0.6s ease-in-out; display: flex; align-items: center; justify-content: center; z-index: 1;
+}
+.slide.active { opacity: 1; visibility: visible; z-index: 10; }
+
+/* NAV GLOBAL */
+nav{position:absolute;top:0;left:0;right:0;z-index:200;background:rgba(247,246,255,0.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--faint);padding:0 3rem;height:65px;display:flex;align-items:center;justify-content:between;}
+.nav-logo{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--p800);letter-spacing:0.08em;display:flex;align-items:center;gap:10px;}
+.nav-logo-icon { width:12px; height:12px; background:var(--p500); border-radius:50%; }
+.nav-links{display:flex;gap:1.5rem; margin-left: auto;}
+.nav-links button{background:none;border:none;font-family:var(--font-body);font-size:12px;color:var(--muted);font-weight:500;transition:color 0.2s;cursor:pointer;}
+.nav-links button:hover, .nav-links button.active-dot{color:var(--p600);}
+
+/* CONTROLES NAVEGACIÓN */
+.slide-ctrl {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px;
+  background: var(--white); border: 1px solid var(--faint); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100;
+  transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(15,9,38,0.04); color: var(--p800);
+}
+.slide-ctrl:hover { background: var(--p600); color: var(--white); border-color: var(--p600); transform: translateY(-50%) scale(1.05); }
+.slide-ctrl i { font-size: 20px; }
+.slide-ctrl.prev { left: 2.5rem; }
+.slide-ctrl.next { right: 2.5rem; }
+
+.slide-dots { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 100; }
+.dot-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--p300); cursor: pointer; transition: all 0.3s ease; }
+.dot-indicator.active { background: var(--p600); width: 24px; border-radius: 8px; }
+
+/* MAQUETACIÓN INTERNA DE SECCIONES */
+.slide-content-wrapper { padding: 90px 7rem 4rem; max-width: 1200px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; justify-content: center; height: 100%; position: relative; }
+.section-label { font-size: 11px; letter-spacing: 0.15em; color: var(--p500); font-weight: 600; text-transform: uppercase; margin-bottom: 0.7rem; display: flex; align-items: center; gap: 10px; }
+.section-label::before { content: ''; display: block; width: 20px; height: 1px; background: var(--p400); }
+.section-title { font-family: var(--font-head); font-size: clamp(32px, 4.5vw, 52px); font-weight: 700; color: var(--p900); line-height: 1.1; margin-bottom: 1.2rem; }
+.section-title span { color: var(--p500); }
+.section-sub { font-size: 16px; color: var(--muted); line-height: 1.6; max-width: 680px; font-weight: 400; margin-bottom: 2.5rem; }
+
+/* DISEÑOS ESPECÍFICOS DE SLIDES */
+/* Gancho */
+.gancho-grid { display: flex; gap: 4rem; align-items: center; margin-top: 1rem; }
+.gancho-story { flex: 1.2; }
+.gancho-story p { font-size: 18px; line-height: 1.7; color: var(--p800); font-weight: 300; }
+.gancho-story p strong { font-weight: 600; color: var(--p600); }
+.gancho-stat-box { flex: 0.8; background: var(--white); padding: 2.5rem; border-radius: 24px; border: 1px solid var(--faint); box-shadow: 0 10px 30px rgba(15,9,38,0.02); text-align: center; }
+.stat-number { font-family: var(--font-head); font-size: 64px; font-weight: 700; color: var(--p500); line-height: 1; margin-bottom: 0.5rem; }
+.stat-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+
+/* Necesidad */
+.problem-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.p-card { background: var(--white); border-radius: 20px; padding: 2rem; border: 1px solid var(--faint); transition: transform 0.3s ease; }
+.p-card:hover { transform: translateY(-5px); }
+.p-card-icon { width: 44px; height: 44px; background: rgba(99,82,232,0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.2rem; color: var(--p500); font-size: 20px; }
+.p-card h3 { font-family: var(--font-head); font-size: 18px; color: var(--p900); margin-bottom: 0.6rem; }
+.p-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* Acercamiento (App Showcases) */
+.acercamiento-container { display: flex; gap: 3rem; align-items: center; }
+.acercamiento-info { flex: 1; }
+.acercamiento-features { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
+.a-feat-item { display: flex; gap: 1rem; background: var(--white); padding: 1rem 1.25rem; border-radius: 14px; border: 1px solid var(--faint); cursor: pointer; transition: all 0.2s; }
+.a-feat-item:hover { border-color: var(--p400); background: rgba(255,255,255,0.7); }
+.a-feat-item i { color: var(--p500); font-size: 18px; margin-top: 2px; }
+.a-feat-item h4 { font-size: 14px; font-weight: 600; color: var(--p900); margin-bottom: 2px; }
+.a-feat-item p { font-size: 12px; color: var(--muted); }
+
+.phone-showcase{ flex: 1; display:flex; gap:20px; align-items:flex-end; justify-content: center; }
+.phone{width:190px; background:var(--ink); border-radius:36px; padding:9px; border:3px solid var(--p800); position:relative; box-shadow: 0 20px 40px rgba(15,9,38,0.08); }
+.phone-notch{width:60px; height:14px; background:var(--ink); border-radius:0 0 10px 10px; margin:0 auto 6px;}
+.phone-screen{border-radius:26px; overflow:hidden; background:var(--p100);}
+.phone-bar{width:50px; height:4px; background:var(--p800); border-radius:4px; margin:8px auto 0;}
+.s-app{min-height:340px; display:flex; flex-direction:column;}
+.s-head{padding:12px 12px 6px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--faint);}
+.s-head .dot{width:6px; height:6px; border-radius:50%; background:var(--p500);}
+.s-head .name{font-family:var(--font-head); font-size:12px; font-weight:600; color:var(--p700);}
+.s-content{padding:10px; flex:1;}
+.s-card-notif{background:var(--p200); border-radius:10px; padding:10px; border:1px solid var(--p300); text-align: left;}
+.s-notif-tag{font-size:7px; font-weight:600; color:var(--p600); letter-spacing:0.05em;}
+.s-notif-time{font-family:var(--font-head); font-size:16px; font-weight:700; color:var(--p800); margin: 2px 0;}
+.s-notif-sub{font-size:8px; color:var(--p600);}
+.s-map{background:var(--p200); border-radius:10px; height:75px; margin-top:8px; display:flex; align-items:center; justify-content:center; position: relative;}
+.s-map-label { font-size: 8px; font-weight: 500; color: var(--p700); }
+.pin{width:8px; height:8px; border-radius:50%; background:var(--p600); position:absolute;}
+.s-nav{display:flex; justify-content:space-around; padding:6px 0; border-top:1px solid var(--faint); background:var(--white); margin-top:auto;}
+.s-nav-btn i{font-size:15px; color:var(--p400);}
+
+/* Beneficios */
+.beneficios-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; }
+.b-card { background: var(--white); border-radius: 16px; padding: 1.7rem 1.5rem; border: 1px solid var(--faint); text-align: left; }
+.b-card-num { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--p300); margin-bottom: 0.5rem; }
+.b-card h3 { font-size: 15px; font-weight: 600; color: var(--p900); margin-bottom: 0.5rem; }
+.b-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* Competencia */
+.comp-table-container { width: 100%; background: var(--white); border-radius: 16px; border: 1px solid var(--faint); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+th, td { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--faint); }
+th { background: rgba(15,9,38,0.02); font-family: var(--font-head); font-weight: 600; color: var(--p900); }
+tr:last-child td { border-bottom: none; }
+.td-highlight { background: rgba(99,82,232,0.03); font-weight: 500; color: var(--p700); }
+.check-icon { color: #22c55e; font-size: 16px; }
+.cross-icon { color: #ef4444; font-size: 16px; }
+
+/* Cierre Profesional */
+.cierre-wrapper { display: flex; gap: 4rem; align-items: center; width: 100%; }
+.cierre-text { flex: 1.1; }
+.cierre-text h3 { font-family: var(--font-head); font-size: 24px; color: var(--p800); margin-bottom: 1rem; }
+.cierre-cta-box { flex: 0.9; background: var(--p800); padding: 2.5rem; border-radius: 24px; color: var(--white); box-shadow: 0 15px 40px rgba(15,9,38,0.15); }
+.cierre-cta-box h3 { font-family: var(--font-head); font-size: 20px; margin-bottom: 0.5rem; color: var(--white); }
+.cierre-cta-box p { font-size: 13px; color: var(--p300); margin-bottom: 1.5rem; line-height: 1.5; }
+.cta-form { display: flex; flex-direction: column; gap: 0.8rem; }
+.cta-form input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); padding: 0.8rem 1rem; border-radius: 10px; color: var(--white); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; }
+.cta-form input:focus { border-color: var(--p400); }
+.cta-button { background: var(--p500); color: var(--white); border: none; padding: 0.9rem; border-radius: 10px; font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.2s; text-align: center; margin-top: 0.4rem; }
+.cta-button:hover { background: var(--p400); transform: translateY(-1px); }
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,9,38,0.5);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(4px);}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--white);border-radius:24px;padding:2.5rem;max-width:480px;width:90%;transform:translateY(20px) scale(0.97);transition:transform 0.3s;position:relative;}
+.modal-overlay.open .modal{transform:translateY(0) scale(1);}
+.modal-tag{display:inline-block;font-size:10px;font-weight:600;padding:4px 12px;border-radius:20px;background:var(--p200);color:var(--p700);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;}
+.modal-icon{width:48px;height:48px;border-radius:12px;background:var(--p200);display:flex;align-items:center;justify-content:center;margin-bottom:1.2rem;color:var(--p600);font-size:22px;}
+.modal h3{font-family:var(--font-head);font-size:22px;font-weight:700;color:var(--p800);margin-bottom:0.75rem;}
+.modal p{font-size:14px;color:var(--muted);line-height:1.6;}
+.modal-close{position:absolute;top:1.25rem;right:1.25rem;width:32px;height:32px;border-radius:50%;background:var(--p100);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;color:var(--muted);}
+.modal-close:hover{background:var(--p200);color:var(--p900);}
+</style>
+</head>
+<body>
+
+<div id="splash-screen">
+  <div class="logo-futurista">
+    <div class="logo-circle outer"></div>
+    <div class="logo-circle inner"></div>
+    <div class="logo-core"></div>
+  </div>
+  <h1 class="splash-title">RECOMAP</h1>
+  <p class="splash-subtitle">Dejalo en nuestras manos</p>
+  <div class="progress-container">
+    <div class="progress-bar"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" id="modal-box">
+    <button class="modal-close" onclick="closeModalBtn()"><i class="ti ti-x"></i></button>
+    <div class="modal-tag" id="m-tag">MÓDULO</div>
+    <div class="modal-icon"><i id="m-icon" class="ti ti-bell"></i></div>
+    <h3 id="m-title">Título Informativo</h3>
+    <p id="m-text">Detalle descriptivo optimizado para la presentación del proyecto.</p>
+  </div>
+</div>
+
+<div class="slider-container">
+
+  <button class="slide-ctrl prev" onclick="changeSlide(-1)"><i class="ti ti-chevron-left"></i></button>
+  <button class="slide-ctrl next" onclick="changeSlide(1)"><i class="ti ti-chevron-right"></i></button>
+
+  <div class="slide-dots" id="slide-dots"></div>
+
+  <nav>
+    <div class="nav-logo"><div class="nav-logo-icon"></div>RECOMAP</div>
+    <div class="nav-links">
+      <button onclick="goToSlide(0)" id="nav-dot-0">Introducción</button>
+      <button onclick="goToSlide(1)" id="nav-dot-1">La Problemática</button>
+      <button onclick="goToSlide(2)" id="nav-dot-2">Nuestra Propuesta</button>
+      <button onclick="goToSlide(3)" id="nav-dot-3">Valor para el Cliente</button>
+      <button onclick="goToSlide(4)" id="nav-dot-4">Análisis de Mercado</button>
+      <button onclick="goToSlide(5)" id="nav-dot-5">Llamado a la Acción</button>
+    </div>
+  </nav>
+
+  <div class="slide active">
+    <div class="slide-content-wrapper">
+      <div class="section-label">Introducción</div>
+      <h2 class="section-title">¿Cuánto le cuesta a un comercio un <span>entorno afectado por residuos</span>?</h2>
+      <p class="section-sub">Imagina abrir las puertas de tu local en Valparaíso por la mañana, listo para recibir clientes, pero encontrarte con acumulación crítica de basura justo en tu fachada debido a un cambio imprevisto en los horarios municipales.</p>
+      <div class="gancho-grid">
+        <div class="gancho-story">
+          <p>Los clientes deciden dónde comprar basándose en la primera impresión. Una calle descuidada no solo destruye la experiencia estética de los tradicionales cerros y planos comerciales de Valparaíso, sino que <strong>afecta directamente los ingresos del locatario</strong> al desviar el tráfico de clientes hacia zonas limpias o grandes cadenas.</p>
+        </div>
+        <div class="gancho-stat-box">
+          <div class="stat-number">74%</div>
+          <div class="stat-label">de los consumidores evita ingresar a locales con basura acumulada en su exterior</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide-content-wrapper">
+      <div class="section-label">La Problemática</div>
+      <h2 class="section-title">El impacto invisible en el <span>comercio local</span></h2>
+      <p class="section-sub">El sistema actual de recolección carece de predictibilidad en tiempo real para el sector comercial de la comuna, provocando ineficiencias críticas que dañan el ecosistema logístico de los locatarios.</p>
+      <div class="problem-cards">
+        <div class="p-card">
+          <div class="p-card-icon"><i class="ti ti-clock-off"></i></div>
+          <h3>Horarios Impredecibles</h3>
+          <p>Los comerciantes disponen sus bolsas de residuos a ciegas, exponiéndolas a vectores sanitarios, animales y condiciones climáticas adversas antes de que pase el camión.</p>
+        </div>
+        <div class="p-card">
+          <div class="p-card-icon"><i class="ti ti-receipt-refund"></i></div>
+          <h3>Riesgo de Multas Civiles</h3>
+          <p>Dejar basura fuera de los contenedores o en horarios no habilitados expone a las patentes comerciales a severas sanciones económicas e inspecciones municipales.</p>
+        </div>
+        <div class="p-card">
+          <div class="p-card-icon"><i class="ti ti-users-minus"></i></div>
+          <h3>Pérdida de Atractivo</h3>
+          <p>Zonas de alta rotación como el Mercado Cardonal o sectores turísticos pierden valor estético, espantando ventas y arruinando el esfuerzo diario de los emprendedores.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide-content-wrapper">
+      <div class="section-label">Nuestra Propuesta</div>
+      <h2 class="section-title">Logística inteligente de residuos en tu <span>dispositivo móvil</span></h2>
+      <p class="section-sub">RECOMAP es la solución SaaS móvil que interconecta a los locatarios y feriantes comerciales con el flujo logístico del servicio de aseo municipal mediante análisis predictivos y geolocalización.</p>
+      <div class="acercamiento-container">
+        <div class="acercamiento-info">
+          <p>Transformamos la incertidumbre en datos accionables a través de tres pilares tecnológicos integrados:</p>
+          <div class="acercamiento-features">
+            <div class="a-feat-item" onclick="openModal('notif')">
+              <i class="ti ti-bell-ringing"></i>
+              <div>
+                <h4>Alertas de Proximidad Inteligentes</h4>
+                <p>Notificaciones automáticas directo al celular minutos antes de que el camión recolector ingrese a tu cuadrante comercial.</p>
+              </div>
+            </div>
+            <div class="a-feat-item" onclick="openModal('mapa')">
+              <i class="ti ti-map-2"></i>
+              <div>
+                <h4>Monitoreo de Capacidad en Red</h4>
+                <p>Mapa interactivo que clasifica el estado de llenado de los contenedores de la zona comercial (Disponible / Crítico).</p>
+              </div>
+            </div>
+            <div class="a-feat-item" onclick="openModal('reporte')">
+              <i class="ti ti-camera-selfie"></i>
+              <div>
+                <h4>Módulo de Reporte y Enlace Directo</h4>
+                <p>Evidencia fotográfica geoetiquetada para notificar microbasurales o incidencias sanitarias críticas al municipio.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-showcase">
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="s-app">
+                <div class="s-head">
+                  <div class="dot"></div>
+                  <span class="s-head name">RECOMAP Business</span>
+                </div>
+                <div class="s-content">
+                  <div class="s-card-notif">
+                    <div class="s-notif-tag">RUTA DE RECOLECCIÓN ACTIVA</div>
+                    <div class="s-notif-time">Camión a 15 min</div>
+                    <div class="s-notif-sub">Cuadrante Mercado Cardonal</div>
+                  </div>
+                  <div class="s-map">
+                    <div class="pin" style="top:25px;left:60px;"></div>
+                    <div class="pin" style="top:45px;left:110px; background: #e11d48;"></div>
+                    <span class="s-map-label">Vista de Contenedores</span>
+                  </div>
+                </div>
+                <div class="s-nav">
+                  <div class="s-nav-btn"><i class="ti ti-home"></i></div>
+                  <div class="s-nav-btn"><i class="ti ti-map"></i></div>
+                  <div class="s-nav-btn"><i class="ti ti-alert-triangle"></i></div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide-content-wrapper">
+      <div class="section-label">Valor para el Cliente</div>
+      <h2 class="section-title">Beneficios directos para la <span>operación de tu comercio</span></h2>
+      <p class="section-sub">Implementar nuestra plataforma tecnológica genera retornos inmediatos en la eficiencia operativa de los establecimientos y resguarda la salud financiera de tu patente.</p>
+      <div class="beneficios-grid">
+        <div class="b-card">
+          <div class="b-card-num">01</div>
+          <h3>Optimización de Tiempo</h3>
+          <p>Reduce el tiempo muerto del personal. Saca los residuos únicamente cuando el camión está en camino.</p>
+        </div>
+        <div class="b-card">
+          <div class="b-card-num">02</div>
+          <h3>Mitigación de Multas</h3>
+          <p>Asegura el cumplimiento irrestricto de las ordenanzas de aseo municipales locales evitando infracciones imprevistas.</p>
+        </div>
+        <div class="b-card">
+          <div class="b-card-num">03</div>
+          <h3>Atracción de Clientes</h3>
+          <p>Un frontis impecable y libre de vectores eleva la percepción de higiene y aumenta significativamente la tasa de conversión.</p>
+        </div>
+        <div class="b-card">
+          <div class="b-card-num">04</div>
+          <h3>Trazabilidad Total</h3>
+          <p>Acceso a un historial digitalizado de reportes enviados para respaldar gestiones frente a gremios y fiscalizaciones.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide-content-wrapper">
+      <div class="section-label">Análisis de Mercado</div>
+      <h2 class="section-title">¿Por qué RECOMAP es la <span>alternativa superior</span>?</h2>
+      <p class="section-sub">Evaluación de las soluciones tradicionales utilizadas actualmente frente a las ventajas estratégicas y centralizadas de nuestro ecosistema.</p>
+      <div class="comp-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Característica Operativa</th>
+              <th class="td-highlight">RECOMAP Business</th>
+              <th>Monitoreo Manual / Espera</th>
+              <th>Grupos de Mensajería Vecinal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Predictibilidad exacta por cuadrante</td>
+              <td class="td-highlight"><i class="ti ti-check check-icon"></i> Automatizado</td>
+              <td><i class="ti ti-x cross-icon"></i> Inexistente</td>
+              <td><i class="ti ti-x cross-icon"></i> Rumores/Avisos tardíos</td>
+            </tr>
+            <tr>
+              <td>Validación y soporte institucional</td>
+              <td class="td-highlight"><i class="ti ti-check check-icon"></i> Conexión directa</td>
+              <td><i class="ti ti-x cross-icon"></i> No posee</td>
+              <td><i class="ti ti-x cross-icon"></i> Informal</td>
+            </tr>
+            <tr>
+              <td>Mapa de saturación de contenedores</td>
+              <td class="td-highlight"><i class="ti ti-check check-icon"></i> En tiempo real</td>
+              <td><i class="ti ti-x cross-icon"></i> Inspección física</td>
+              <td><i class="ti ti-x cross-icon"></i> No disponible</td>
+            </tr>
+            <tr>
+              <td>Canal formal de reportes de salubridad</td>
+              <td class="td-highlight"><i class="ti ti-check check-icon"></i> Con respaldo GPS</td>
+              <td><i class="ti ti-x cross-icon"></i> Línea telefónica saturada</td>
+              <td><i class="ti ti-x cross-icon"></i> Chat informal sin métricas</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide-content-wrapper">
+      <div class="section-label">Llamado a la Acción</div>
+      <h2 class="section-title">Lidera el cambio comercial hacia un <span>Valparaíso limpio</span></h2>
+      <div class="cierre-wrapper">
+        <div class="cierre-text">
+          <h3>Súmate a la red de comercios inteligentes</h3>
+          <p class="section-sub" style="margin-bottom: 1.5rem;">Las ciudades del futuro no solo optimizan el transporte o la energía, sino también la gestión de sus entornos comerciales urbanos. Proteger el atractivo visual de Valparaíso es un activo crítico para asegurar la rentabilidad, la inversión turística y la confianza de tus compradores.</p>
+          <p class="section-sub" style="font-size: 14px;">Al unirte a RECOMAP, tu establecimiento obtiene un sello digital de comercio sustentable y acceso preferente a las mesas de optimización urbana comunal.</p>
+        </div>
+        <div class="cierre-cta-box">
+          <h3>Regístrate en el Programa Piloto</h3>
+          <p>Asegura una de las 50 vacantes gratuitas para los primeros comercios e industrias de Valparaíso en digitalizar su gestión de residuos.</p>
+          <div class="cta-form">
+            <input type="text" placeholder="Nombre del Comercio / Razón Social" required>
+            <input type="email" placeholder="Correo Electrónico Corporativo" required>
+            <input type="text" placeholder="Sector / Ubicación en Valparaíso" required>
+            <button class="cta-button" onclick="alert('¡Gracias por tu interés profesional! Tu solicitud de incorporación al piloto comercial ha sido registrada para evaluación.')">Solicitar Acceso Preferente</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// CONFIGURACIÓN DE MODALES INFORMATIVOS
+const modalData = {
+  notif: {
+    tag: 'Alertas tempranas',
+    icon: 'ti-bell-ringing',
+    title: 'Notificaciones Predictivas de Proximidad',
+    text: 'El sistema calcula de forma inteligente la velocidad promedio del camión recolector y su geolocalización dentro del cuadrante comercial asignado. Envía una notificación push automatizada con un margen óptimo de tiempo, permitiendo que el locatario ordene sus labores internas y disponga los residuos en el contenedor en el momento idóneo, evitando la dispersión de desechos.'
+  },
+  mapa: {
+    tag: 'Infraestructura',
+    icon: 'ti-map-2',
+    title: 'Red Digitalizada de Contenedores',
+    text: 'El mapa interactivo de la aplicación recopila datos de sensores y reportes de la comunidad de comerciantes para reflejar la disponibilidad volumétrica de los receptáculos. Los usuarios comerciales pueden trazar rutas óptimas para depositar cartones, embalajes o residuos orgánicos únicamente en zonas con capacidad suficiente, reduciendo desbordamientos críticos.'
+  },
+  reporte: {
+    tag: 'Fiscalización y Apoyo',
+    icon: 'ti-camera-selfie',
+    title: 'Canal de Trazabilidad y Reporte',
+    text: 'Permite generar alertas inmediatas con captura fotográfica integrada y geolocalización satelital protegida. Esta funcionalidad dota a las asociaciones de comerciantes de un canal corporativo directo para denunciar microbasurales clandestinos o fallas en el vaciado de contenedores, sirviendo como respaldo auditable ante inspecciones sanitarias municipales.'
+  }
+};
+
+function openModal(key) {
+  const d = modalData[key];
+  if (!d) return;
+  document.getElementById('m-tag').textContent = d.tag;
+  document.getElementById('m-icon').className = 'ti ' + d.icon;
+  document.getElementById('m-title').textContent = d.title;
+  document.getElementById('m-text').textContent = d.text;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(e) { if (e.target === document.getElementById('modal')) closeModalBtn(); }
+function closeModalBtn() { document.getElementById('modal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalBtn(); });
+
+
+// LÓGICA DE NAVEGACIÓN POR DIAPOSITIVAS (SLIDES)
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+let isSplashActive = true;
+
+// Bloquear interacciones durante el Splash Screen de 10 segundos
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    splash.classList.add('hidden');
+    isSplashActive = false;
+  }, 10000); // 10 Segundos exactos de carga futurista
+});
+
+// Crear los indicadores de puntos inferiores de forma dinámica
+const dotsContainer = document.getElementById('slide-dots');
+for (let i = 0; i < totalSlides; i++) {
+  const dot = document.createElement('div');
+  dot.classList.add('dot-indicator');
+  if (i === 0) dot.classList.add('active');
+  dot.setAttribute('onclick', `goToSlide(${i})`);
+  dotsContainer.appendChild(dot);
+}
+const dots = document.querySelectorAll('.dot-indicator');
+
+function updateSlider() {
+  slides.forEach((slide, index) => {
+    slide.classList.toggle('active', index === currentSlide);
+  });
+  dots.forEach((dot, index) => {
+    dot.classList.toggle('active', index === currentSlide);
+  });
+  // Actualizar indicadores del menú superior para sincronía profesional
+  for(let i=0; i<totalSlides; i++) {
+    const navBtn = document.getElementById(`nav-dot-${i}`);
+    if(navBtn) navBtn.classList.toggle('active-dot', i === currentSlide);
+  }
+}
+
+function changeSlide(direction) {
+  if (isSplashActive) return; // Evitar navegación durante la carga inicial
+  currentSlide += direction;
+  if (currentSlide >= totalSlides) currentSlide = 0;
+  if (currentSlide < 0) currentSlide = totalSlides - 1;
+  updateSlider();
+}
+
+function goToSlide(index) {
+  if (isSplashActive) return;
+  currentSlide = index;
+  updateSlider();
+}
+
+// Soporte de navegación mediante teclado físico
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') changeSlide(1);
+  if (e.key === 'ArrowLeft') changeSlide(-1);
+});
+</script>
+</body>
+</html>
